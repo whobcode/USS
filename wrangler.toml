@@ -1,0 +1,28 @@
+name = "uss"
+main = "src/worker.js"
+compatibility_date = "2024-01-01"
+
+# KV Namespace for URL storage
+# Uncomment and configure after creating the namespace:
+# [[kv_namespaces]]
+# binding = "URLS"
+# id = "your-kv-namespace-id"
+
+# Workers AI binding (for future AI features)
+# [ai]
+# binding = "AI"
+
+# AI Gateway (for caching AI requests)
+# Uncomment when ready:
+# [[ai_gateway]]
+# binding = "AI_GATEWAY"
+# gateway_id = "your-gateway-id"
+
+# Development settings
+[dev]
+port = 8787
+local_protocol = "http"
+
+# Production environment
+[env.production]
+# Add production-specific settings here
