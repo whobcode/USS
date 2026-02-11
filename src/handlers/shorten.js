@@ -4,6 +4,8 @@
  * Creates shortened URLs and stores them in KV
  */
 
+import { categorizeUrl, checkUrlSafety, summarizeUrl, generateSmartAliases } from '../utils/ai.js';
+
 /**
  * Generate a random short code
  * @param {number} length - Length of the short code
@@ -41,7 +43,7 @@ function isValidUrl(url) {
 export async function handleShorten(request, env) {
   try {
     const body = await request.json();
-    const { url, customAlias } = body;
+    const { url, customAlias, generatePreview, suggestAliases } = body;
 
     // Validate URL
     if (!url) {
@@ -79,21 +81,74 @@ export async function handleShorten(request, env) {
       clicks: 0
     };
 
-    // TODO: Add AI categorization here
-    // const category = await categorizeUrl(url, env);
-    // urlData.category = category;
+    // Build list of AI tasks to run in parallel
+    const aiTasks = [
+      categorizeUrl(url, env),
+      checkUrlSafety(url, env)
+    ];
+
+    // Optionally add preview generation
+    if (generatePreview) {
+      aiTasks.push(summarizeUrl(url, env));
+    }
+
+    // Optionally add alias suggestions
+    if (suggestAliases && !customAlias) {
+      aiTasks.push(generateSmartAliases(url, env));
+    }
+
+    // Run all AI tasks in parallel
+    const results = await Promise.all(aiTasks);
+    const [categoryResult, safetyResult] = results;
+
+    urlData.category = categoryResult.category;
+    urlData.categoryConfidence = categoryResult.confidence;
+    urlData.safety = {
+      safe: safetyResult.safe,
+      score: safetyResult.score,
+      flags: safetyResult.flags,
+      analysis: safetyResult.analysis
+    };
+
+    // Add preview if requested
+    let preview = null;
+    let aliasIndex = 2;
+    if (generatePreview) {
+      preview = results[aliasIndex];
+      urlData.preview = preview;
+      aliasIndex++;
+    }
+
+    // Get suggested aliases if requested
+    let suggestedAliases = [];
+    if (suggestAliases && !customAlias) {
+      suggestedAliases = results[aliasIndex] || [];
+    }
 
     await env.URLS.put(shortCode, JSON.stringify(urlData));
 
     // Build response
     const baseUrl = new URL(request.url).origin;
 
-    return new Response(JSON.stringify({
+    const response = {
       shortUrl: `${baseUrl}/${shortCode}`,
       shortCode,
       originalUrl: url,
-      createdAt: urlData.createdAt
-    }), {
+      createdAt: urlData.createdAt,
+      category: urlData.category,
+      categoryConfidence: urlData.categoryConfidence,
+      safety: urlData.safety
+    };
+
+    if (preview) {
+      response.preview = preview;
+    }
+
+    if (suggestedAliases.length > 0) {
+      response.suggestedAliases = suggestedAliases;
+    }
+
+    return new Response(JSON.stringify(response), {
       status: 201,
       headers: { 'Content-Type': 'application/json' }
     });

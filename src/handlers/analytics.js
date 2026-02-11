@@ -61,6 +61,9 @@ export async function handleAnalytics(shortCode, env) {
       shortCode,
       originalUrl: urlData.originalUrl,
       createdAt: urlData.createdAt,
+      category: urlData.category || null,
+      categoryConfidence: urlData.categoryConfidence || null,
+      safety: urlData.safety || null,
       totalClicks: urlData.clicks || 0,
       lastClickedAt: urlData.lastClickedAt || null,
       analytics: {

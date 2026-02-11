@@ -1,12 +1,18 @@
 {
   "name": "uss",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/worker.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run",
+    "deploy": "wrangler deploy",
+    "deploy:prod": "wrangler deploy --env production"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "URL Shortener Service - Cloudflare Worker",
+  "devDependencies": {
+    "wrangler": "^4.64.0"
+  }
 }
