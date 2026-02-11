@@ -149,6 +149,47 @@ export function getUIHtml() {
       accent-color: var(--accent);
     }
 
+    .provider-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .provider-option {
+      cursor: pointer;
+    }
+
+    .provider-option input {
+      display: none;
+    }
+
+    .provider-card {
+      display: block;
+      padding: 16px;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      transition: all 0.2s;
+    }
+
+    .provider-option input:checked + .provider-card {
+      border-color: var(--accent);
+      background: rgba(79, 70, 229, 0.1);
+    }
+
+    .provider-name {
+      display: block;
+      font-weight: 600;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .provider-desc {
+      display: block;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
     .btn {
       padding: 14px 28px;
       border-radius: 10px;
@@ -501,20 +542,41 @@ export function getUIHtml() {
             <input type="url" id="url" name="url" placeholder="https://example.com/very/long/url/that/needs/shortening" required>
           </div>
           <div class="form-group">
-            <label for="alias">Custom alias (optional)</label>
-            <input type="text" id="alias" name="alias" placeholder="my-custom-link" pattern="[a-zA-Z0-9_-]+">
+            <label>Provider</label>
+            <div class="provider-toggle">
+              <label class="provider-option">
+                <input type="radio" name="provider" value="uss" checked>
+                <span class="provider-card">
+                  <span class="provider-name">USS</span>
+                  <span class="provider-desc">AI-powered with analytics, safety checks, QR codes</span>
+                </span>
+              </label>
+              <label class="provider-option">
+                <input type="radio" name="provider" value="tinyurl">
+                <span class="provider-card">
+                  <span class="provider-name">TinyURL</span>
+                  <span class="provider-desc">Simple & fast, no tracking or AI features</span>
+                </span>
+              </label>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Options</label>
-            <div class="checkbox-group">
-              <label class="checkbox-label">
-                <input type="checkbox" id="generatePreview" checked>
-                Generate page preview
-              </label>
-              <label class="checkbox-label">
-                <input type="checkbox" id="suggestAliases">
-                Suggest smart aliases
-              </label>
+          <div id="uss-options">
+            <div class="form-group">
+              <label for="alias">Custom alias (optional)</label>
+              <input type="text" id="alias" name="alias" placeholder="my-custom-link" pattern="[a-zA-Z0-9_-]+">
+            </div>
+            <div class="form-group">
+              <label>Options</label>
+              <div class="checkbox-group">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="generatePreview" checked>
+                  Generate page preview
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" id="suggestAliases">
+                  Suggest smart aliases
+                </label>
+              </div>
             </div>
           </div>
           <button type="submit" class="btn btn-primary" id="submit-btn">Shorten URL</button>
@@ -647,75 +709,111 @@ export function getUIHtml() {
     const loading = document.getElementById('loading');
     const error = document.getElementById('error');
     const result = document.getElementById('result');
+    const ussOptions = document.getElementById('uss-options');
+    const loadingText = loading.querySelector('p');
+
+    // Toggle USS options based on provider selection
+    document.querySelectorAll('input[name="provider"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        const isUss = document.querySelector('input[name="provider"]:checked').value === 'uss';
+        ussOptions.style.display = isUss ? 'block' : 'none';
+      });
+    });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const url = document.getElementById('url').value;
-      const customAlias = document.getElementById('alias').value;
-      const generatePreview = document.getElementById('generatePreview').checked;
-      const suggestAliases = document.getElementById('suggestAliases').checked;
+      const provider = document.querySelector('input[name="provider"]:checked').value;
 
       error.classList.remove('show');
       result.classList.remove('show');
       loading.classList.add('show');
+      loadingText.textContent = provider === 'uss' ? 'Analyzing URL with AI...' : 'Shortening with TinyURL...';
       document.getElementById('submit-btn').disabled = true;
 
       try {
-        const response = await fetch('/api/shorten', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url, customAlias, generatePreview, suggestAliases })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Failed to shorten URL');
+        let response, data;
 
-        document.getElementById('short-url').textContent = data.shortUrl;
-        document.getElementById('category').textContent = data.category || 'Unknown';
-
-        const safetyScore = data.safety?.score ?? 100;
-        document.getElementById('safety-score').textContent = safetyScore + '/100';
-        const scoreFill = document.getElementById('score-fill');
-        scoreFill.style.width = safetyScore + '%';
-        scoreFill.className = 'score-fill ' + (safetyScore >= 80 ? 'safe' : safetyScore >= 50 ? 'warning' : 'danger');
-
-        const flagsContainer = document.getElementById('safety-flags');
-        flagsContainer.innerHTML = '';
-        if (data.safety?.flags?.length) {
-          data.safety.flags.forEach(flag => {
-            const span = document.createElement('span');
-            span.className = 'flag';
-            span.textContent = flag.replace(/_/g, ' ');
-            flagsContainer.appendChild(span);
+        if (provider === 'tinyurl') {
+          response = await fetch('/api/tinyurl', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
           });
-        }
+          data = await response.json();
+          if (!response.ok) throw new Error(data.error || 'Failed to shorten URL');
 
-        const previewSection = document.getElementById('preview-section');
-        if (data.preview) {
-          document.getElementById('preview-title').textContent = data.preview.title || 'No title';
-          document.getElementById('preview-summary').textContent = data.preview.summary || 'No summary available';
-          previewSection.style.display = 'block';
+          // Display TinyURL result (simpler output)
+          document.getElementById('short-url').textContent = data.shortUrl;
+          document.getElementById('category').textContent = 'N/A (TinyURL)';
+          document.getElementById('safety-score').textContent = 'N/A';
+          document.getElementById('score-fill').style.width = '0%';
+          document.getElementById('safety-flags').innerHTML = '';
+          document.getElementById('preview-section').style.display = 'none';
+          document.getElementById('suggestions-section').style.display = 'none';
+          document.getElementById('qr-container').innerHTML = '<p style="color: var(--text-secondary); padding: 20px;">QR codes only available with USS provider</p>';
         } else {
-          previewSection.style.display = 'none';
-        }
+          const customAlias = document.getElementById('alias').value;
+          const generatePreview = document.getElementById('generatePreview').checked;
+          const suggestAliases = document.getElementById('suggestAliases').checked;
 
-        const suggestionsSection = document.getElementById('suggestions-section');
-        const suggestionsContainer = document.getElementById('suggestions');
-        if (data.suggestedAliases?.length) {
-          suggestionsContainer.innerHTML = '';
-          data.suggestedAliases.forEach(alias => {
-            const span = document.createElement('span');
-            span.className = 'suggestion';
-            span.textContent = alias;
-            span.onclick = () => document.getElementById('alias').value = alias;
-            suggestionsContainer.appendChild(span);
+          response = await fetch('/api/shorten', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, customAlias, generatePreview, suggestAliases })
           });
-          suggestionsSection.style.display = 'block';
-        } else {
-          suggestionsSection.style.display = 'none';
+          data = await response.json();
+          if (!response.ok) throw new Error(data.error || 'Failed to shorten URL');
+
+          document.getElementById('short-url').textContent = data.shortUrl;
+          document.getElementById('category').textContent = data.category || 'Unknown';
+
+          const safetyScore = data.safety?.score ?? 100;
+          document.getElementById('safety-score').textContent = safetyScore + '/100';
+          const scoreFill = document.getElementById('score-fill');
+          scoreFill.style.width = safetyScore + '%';
+          scoreFill.className = 'score-fill ' + (safetyScore >= 80 ? 'safe' : safetyScore >= 50 ? 'warning' : 'danger');
+
+          const flagsContainer = document.getElementById('safety-flags');
+          flagsContainer.innerHTML = '';
+          if (data.safety?.flags?.length) {
+            data.safety.flags.forEach(flag => {
+              const span = document.createElement('span');
+              span.className = 'flag';
+              span.textContent = flag.replace(/_/g, ' ');
+              flagsContainer.appendChild(span);
+            });
+          }
+
+          const previewSection = document.getElementById('preview-section');
+          if (data.preview) {
+            document.getElementById('preview-title').textContent = data.preview.title || 'No title';
+            document.getElementById('preview-summary').textContent = data.preview.summary || 'No summary available';
+            previewSection.style.display = 'block';
+          } else {
+            previewSection.style.display = 'none';
+          }
+
+          const suggestionsSection = document.getElementById('suggestions-section');
+          const suggestionsContainer = document.getElementById('suggestions');
+          if (data.suggestedAliases?.length) {
+            suggestionsContainer.innerHTML = '';
+            data.suggestedAliases.forEach(alias => {
+              const span = document.createElement('span');
+              span.className = 'suggestion';
+              span.textContent = alias;
+              span.onclick = () => document.getElementById('alias').value = alias;
+              suggestionsContainer.appendChild(span);
+            });
+            suggestionsSection.style.display = 'block';
+          } else {
+            suggestionsSection.style.display = 'none';
+          }
+
+          const qrContainer = document.getElementById('qr-container');
+          qrContainer.innerHTML = '<img src="/api/qr/' + data.shortCode + '?size=200" alt="QR Code" style="width: 200px; height: 200px;">';
         }
 
-        const qrContainer = document.getElementById('qr-container');
-        qrContainer.innerHTML = '<img src="/api/qr/' + data.shortCode + '?size=200" alt="QR Code" style="width: 200px; height: 200px;">';
         result.classList.add('show');
       } catch (err) {
         error.textContent = err.message;

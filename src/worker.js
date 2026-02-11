@@ -10,6 +10,7 @@ import { handleRedirect } from './handlers/redirect.js';
 import { handleAnalytics } from './handlers/analytics.js';
 import { handlePreview } from './handlers/preview.js';
 import { handleQRCode } from './handlers/qrcode.js';
+import { handleTinyUrl } from './handlers/tinyurl.js';
 import { handleUI } from './handlers/ui.js';
 
 export default {
@@ -21,6 +22,10 @@ export default {
       // API Routes
       if (path === '/api/shorten' && request.method === 'POST') {
         return handleShorten(request, env);
+      }
+
+      if (path === '/api/tinyurl' && request.method === 'POST') {
+        return handleTinyUrl(request);
       }
 
       if (path.startsWith('/api/analytics/')) {
@@ -59,7 +64,8 @@ export default {
             'QR code generation'
           ],
           endpoints: {
-            'POST /api/shorten': 'Create a shortened URL (body: {url, customAlias?, generatePreview?, suggestAliases?})',
+            'POST /api/shorten': 'Create a shortened URL with AI features (body: {url, customAlias?, generatePreview?, suggestAliases?})',
+            'POST /api/tinyurl': 'Create a shortened URL via TinyURL (body: {url})',
             'GET /:shortCode': 'Redirect to original URL',
             'GET /api/analytics/:shortCode': 'Get click analytics',
             'GET /api/preview/:shortCode': 'Get/generate page preview',
