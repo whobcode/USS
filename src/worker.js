@@ -11,6 +11,7 @@ import { handleAnalytics } from './handlers/analytics.js';
 import { handlePreview } from './handlers/preview.js';
 import { handleQRCode } from './handlers/qrcode.js';
 import { handleTinyUrl } from './handlers/tinyurl.js';
+import { handlePasswordCheck, handleCaesarCipher, handleBase64 } from './handlers/tools.js';
 import { handleUI } from './handlers/ui.js';
 
 export default {
@@ -43,6 +44,19 @@ export default {
         return handleQRCode(shortCode, env, request);
       }
 
+      // Tools API (inspired by Python-Scripts)
+      if (path === '/api/tools/password' && request.method === 'POST') {
+        return handlePasswordCheck(request);
+      }
+
+      if (path === '/api/tools/caesar' && request.method === 'POST') {
+        return handleCaesarCipher(request);
+      }
+
+      if (path === '/api/tools/base64' && request.method === 'POST') {
+        return handleBase64(request);
+      }
+
       // Health check
       if (path === '/health') {
         return new Response(JSON.stringify({ status: 'ok' }), {
@@ -69,7 +83,10 @@ export default {
             'GET /:shortCode': 'Redirect to original URL',
             'GET /api/analytics/:shortCode': 'Get click analytics',
             'GET /api/preview/:shortCode': 'Get/generate page preview',
-            'GET /api/qr/:shortCode': 'Get QR code (query: ?size=200&dark=#000&light=#fff&format=svg|json)'
+            'GET /api/qr/:shortCode': 'Get QR code (query: ?size=200&dark=#000&light=#fff&format=svg|json)',
+            'POST /api/tools/password': 'Check password strength (body: {password})',
+            'POST /api/tools/caesar': 'Caesar cipher encrypt/decrypt (body: {text, shift, mode})',
+            'POST /api/tools/base64': 'Base64 encode/decode (body: {text, mode})'
           }
         }), {
           headers: { 'Content-Type': 'application/json' }

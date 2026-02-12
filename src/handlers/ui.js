@@ -531,6 +531,7 @@ export function getUIHtml() {
     <div class="tabs">
       <div class="tab active" data-tab="shorten">Shorten URL</div>
       <div class="tab" data-tab="analytics">Analytics</div>
+      <div class="tab" data-tab="tools">Tools</div>
     </div>
 
     <div id="shorten-tab" class="tab-content active">
@@ -686,6 +687,75 @@ export function getUIHtml() {
 
           <h4 style="margin: 24px 0 12px; color: var(--text-secondary);">Recent Clicks</h4>
           <div id="recent-clicks"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tools-tab" class="tab-content">
+      <div class="card">
+        <h2 class="card-title">Utility Tools</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 24px;">Inspired by <a href="https://github.com/whobcode/Python-Scripts" target="_blank" style="color: var(--accent);">Python-Scripts</a> repository</p>
+
+        <div class="tool-section">
+          <h3 style="margin-bottom: 16px;">Password Strength Checker</h3>
+          <div class="form-group">
+            <input type="password" id="password-input" placeholder="Enter password to check" style="width: 100%;">
+          </div>
+          <button class="btn btn-primary btn-sm" id="check-password-btn">Check Strength</button>
+          <div id="password-result" style="margin-top: 16px; display: none;">
+            <div class="meta-item">
+              <div class="meta-label">Strength</div>
+              <div class="meta-value" id="password-strength">-</div>
+              <div class="score-bar" style="margin-top: 8px;">
+                <div class="score-fill" id="password-score-fill"></div>
+              </div>
+              <div id="password-feedback" style="margin-top: 12px; font-size: 14px; color: var(--text-secondary);"></div>
+            </div>
+          </div>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid var(--border); margin: 24px 0;">
+
+        <div class="tool-section">
+          <h3 style="margin-bottom: 16px;">Caesar Cipher</h3>
+          <div class="form-group">
+            <input type="text" id="caesar-input" placeholder="Enter text to encrypt/decrypt" style="width: 100%;">
+          </div>
+          <div class="form-group" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <label style="margin: 0;">Shift:</label>
+            <input type="number" id="caesar-shift" value="3" min="1" max="25" style="width: 80px;">
+            <select id="caesar-mode" style="padding: 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+              <option value="encrypt">Encrypt</option>
+              <option value="decrypt">Decrypt</option>
+            </select>
+            <button class="btn btn-primary btn-sm" id="caesar-btn">Go</button>
+          </div>
+          <div id="caesar-result" style="margin-top: 16px; display: none;">
+            <div class="meta-item">
+              <div class="meta-label">Result</div>
+              <div class="meta-value" id="caesar-output" style="font-family: monospace; word-break: break-all;"></div>
+            </div>
+          </div>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid var(--border); margin: 24px 0;">
+
+        <div class="tool-section">
+          <h3 style="margin-bottom: 16px;">Base64 Encoder/Decoder</h3>
+          <div class="form-group">
+            <textarea id="base64-input" placeholder="Enter text to encode/decode" rows="3" style="width: 100%; padding: 14px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; color: var(--text-primary); font-size: 16px; resize: vertical;"></textarea>
+          </div>
+          <div class="form-group" style="display: flex; gap: 12px;">
+            <button class="btn btn-primary btn-sm" id="base64-encode-btn">Encode</button>
+            <button class="btn btn-secondary btn-sm" id="base64-decode-btn">Decode</button>
+          </div>
+          <div id="base64-result" style="margin-top: 16px; display: none;">
+            <div class="meta-item">
+              <div class="meta-label">Result</div>
+              <div class="meta-value" id="base64-output" style="font-family: monospace; word-break: break-all;"></div>
+              <button class="btn btn-secondary btn-sm" id="base64-copy-btn" style="margin-top: 8px;">Copy</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -882,6 +952,91 @@ export function getUIHtml() {
 
     document.getElementById('analytics-code').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') analyticsBtn.click();
+    });
+
+    // Tools - Password Strength Checker
+    document.getElementById('check-password-btn').addEventListener('click', async () => {
+      const password = document.getElementById('password-input').value;
+      const resultDiv = document.getElementById('password-result');
+
+      try {
+        const response = await fetch('/api/tools/password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+        const data = await response.json();
+
+        document.getElementById('password-strength').textContent = data.strength.toUpperCase();
+        const scoreFill = document.getElementById('password-score-fill');
+        scoreFill.style.width = data.score + '%';
+        scoreFill.className = 'score-fill ' + (data.score >= 80 ? 'safe' : data.score >= 50 ? 'warning' : 'danger');
+
+        const feedbackDiv = document.getElementById('password-feedback');
+        feedbackDiv.innerHTML = data.feedback.map(f => '<div>• ' + f + '</div>').join('');
+
+        resultDiv.style.display = 'block';
+      } catch (err) {
+        alert('Error checking password');
+      }
+    });
+
+    // Tools - Caesar Cipher
+    document.getElementById('caesar-btn').addEventListener('click', async () => {
+      const text = document.getElementById('caesar-input').value;
+      const shift = document.getElementById('caesar-shift').value;
+      const mode = document.getElementById('caesar-mode').value;
+
+      if (!text) return;
+
+      try {
+        const response = await fetch('/api/tools/caesar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, shift, mode })
+        });
+        const data = await response.json();
+
+        document.getElementById('caesar-output').textContent = data.output;
+        document.getElementById('caesar-result').style.display = 'block';
+      } catch (err) {
+        alert('Error processing cipher');
+      }
+    });
+
+    // Tools - Base64
+    async function handleBase64(mode) {
+      const text = document.getElementById('base64-input').value;
+      if (!text) return;
+
+      try {
+        const response = await fetch('/api/tools/base64', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, mode })
+        });
+        const data = await response.json();
+
+        if (data.error) {
+          alert(data.error);
+          return;
+        }
+
+        document.getElementById('base64-output').textContent = data.output;
+        document.getElementById('base64-result').style.display = 'block';
+      } catch (err) {
+        alert('Error processing base64');
+      }
+    }
+
+    document.getElementById('base64-encode-btn').addEventListener('click', () => handleBase64('encode'));
+    document.getElementById('base64-decode-btn').addEventListener('click', () => handleBase64('decode'));
+    document.getElementById('base64-copy-btn').addEventListener('click', async () => {
+      const text = document.getElementById('base64-output').textContent;
+      await navigator.clipboard.writeText(text);
+      const btn = document.getElementById('base64-copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 2000);
     });
   </script>
 </body>
